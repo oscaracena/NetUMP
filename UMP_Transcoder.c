@@ -1,7 +1,7 @@
 /*
  *  UMP_Transcoder.c
  *  Functions to convert UMP <-> MIDI 1.0
- *  @231224
+ *  @050125
  *
  * Copyright (c) 2022 - 2024 Benoit BOUCHEZ / KissBox
  * License : MIT
@@ -25,6 +25,12 @@
  * SOFTWARE.
  *
  */
+
+/* 
+Release notes 
+050125
+	- Bug corrected in TranscodeSYSEX_UMP() : function never returns 0 when last packet is generated
+*/
 
 #include "UMP_Transcoder.h"
 
@@ -116,6 +122,10 @@ unsigned char TranscodeSYSEX_UMP(uint8_t* MIDIBytes, unsigned int MIDI1Length, u
 	if (MIDI1Length <= 6)
 		return 0;
 
+	// If last UMP packet has been generated, report that there is no more SYSEX data to convert
+	if (*PtrSYSEX > MIDI1Length)
+		return 0;
+
 	// First packet : Start packet with 6 bytes (as shorter packets are not processed here)
 	if (*PtrSYSEX == 0)
 	{
@@ -159,6 +169,10 @@ unsigned char TranscodeSYSEX_UMP(uint8_t* MIDIBytes, unsigned int MIDI1Length, u
 
 		if (RemainingBytes == 6)
 			UMPMessage[1] |= MIDIBytes[ByteCounter + 5];
+
+		// Make ByteCounter pass over the SYSEX size so next call to this function will return 0
+		ByteCounter += 16;		// To be sure we really pass over the limit for the next call :-)
+		*PtrSYSEX = ByteCounter;
 
 		return 1;
 	}
