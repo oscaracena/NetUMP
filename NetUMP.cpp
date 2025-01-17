@@ -217,6 +217,8 @@ void CNetUMPHandler::RunSession (void)
 	TUMP_PING_PACKET_NO_SIGNATURE* PingPacket;
 	int PtrParse;
 	unsigned int PayloadSize;
+	int PeerEndpointNamePtr;
+	unsigned int PeerEndpointNameSize;
 
 	// Do not process if communication layers are not ready
 	if (SocketLocked) return;
@@ -256,6 +258,9 @@ void CNetUMPHandler::RunSession (void)
 			{  // If we are not session initiator, just wait to be invited again
 				SessionState=SESSION_WAIT_INVITE;
 			}
+
+			if (DisconnectCallback != 0)
+				DisconnectCallback();
 		}
 	}
 
@@ -317,6 +322,9 @@ void CNetUMPHandler::RunSession (void)
 							break;
 						case INVITATION_COMMAND :
 							InvitationReceived = true;
+							// Size is given in 32-bit words, convert it into bytes
+							PeerEndpointNameSize = ReceptionBuffer[PtrParse + 2] * 4;
+							PeerEndpointNamePtr = PtrParse + 4;
 							break;
 						case BYE_COMMAND :
 							BYEReceived = true;
@@ -376,6 +384,11 @@ void CNetUMPHandler::RunSession (void)
 				this->SessionPartnerPort = SenderPort;
 				SendInvitationAcceptedCommand ();
 				ResetFECMemory();
+
+				if (ConnectionCallback != 0) {
+					ConnectionCallback(
+						(const char*)(ReceptionBuffer+PeerEndpointNamePtr), PeerEndpointNameSize);
+				}
 			}
 		}
 		else
@@ -407,6 +420,9 @@ void CNetUMPHandler::RunSession (void)
 				RestartSessionInitiator ();		// This make the driver automatically invite again a partner which has sent a BYE
 			}
 			ConnectionLost = true;		// This will report information to user interface
+
+			if (DisconnectCallback != 0)
+				DisconnectCallback();
 		}
 		else
 		{
@@ -822,4 +838,16 @@ void CNetUMPHandler::SetCallback(TUMPDataCallback CallbackFunc, void* UserInstan
 	// Restore lock state
 	this->SocketLocked = SocketState;
 }  // CNetUMPHandler::SetCallback
+//--------------------------------------------------------------------------
+
+void CNetUMPHandler::SetConnectionCallback(void (*CallbackFunc)(const char* EndpointName, unsigned int Size))
+{
+	this->ConnectionCallback = CallbackFunc;
+}  // CNetUMPHandler::SetConnectionCallback
+//--------------------------------------------------------------------------
+
+void CNetUMPHandler::SetDisconnectCallback(void (*CallbackFunc)())
+{
+	this->DisconnectCallback = CallbackFunc;
+}  // CNetUMPHandler::SetDisconnectCallback
 //--------------------------------------------------------------------------
