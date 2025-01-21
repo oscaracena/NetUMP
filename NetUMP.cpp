@@ -186,6 +186,9 @@ void CNetUMPHandler::CloseSession (void)
 		SessionState=SESSION_CLOSED;
 		SendBYECommand(BYE_USER_TERMINATED, SessionPartnerIP, SessionPartnerPort);
 		SystemSleepMillis(50);		// Give time to send the message before closing the socket
+
+		if (DisconnectCallback != 0)
+			DisconnectCallback();
 	}
 }  // CNetUMPHandler::CloseSession
 //---------------------------------------------------------------------------
@@ -351,7 +354,7 @@ void CNetUMPHandler::RunSession (void)
 							// We should report the reste to application layer (send All Notes Off...)
 							break;
 						case SESSION_RESET_REPLY_COMMAND :
-							// TODO 
+							// TODO
 							// If we did not send a SESSION RESET and we receive a REPLY, we should send a SESSION RESET command
 							// If this message is received out of an active session, send BYE with SESSION_NOT_ESTABLISHED
 							break;
@@ -385,10 +388,8 @@ void CNetUMPHandler::RunSession (void)
 				SendInvitationAcceptedCommand ();
 				ResetFECMemory();
 
-				if (ConnectionCallback != 0) {
-					ConnectionCallback(
-						(const char*)(ReceptionBuffer+PeerEndpointNamePtr), PeerEndpointNameSize);
-				}
+				if (ConnectionCallback != 0)
+					ConnectionCallback((const char*)(ReceptionBuffer+PeerEndpointNamePtr), PeerEndpointNameSize);
 			}
 		}
 		else
@@ -472,6 +473,9 @@ void CNetUMPHandler::RunSession (void)
 			SessionPartnerIP = SenderIP;		// TODO : what happens if we receive accidentally an INVITATION ACCEPTED from another device while we are inviting one ?
 			SessionState=SESSION_OPENED;
 			ResetFECMemory();
+
+			if (ConnectionCallback != 0)
+				ConnectionCallback((const char*)(ReceptionBuffer+PeerEndpointNamePtr), PeerEndpointNameSize);
 			return;
 		}
 
