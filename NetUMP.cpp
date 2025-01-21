@@ -220,7 +220,7 @@ void CNetUMPHandler::RunSession (void)
 	TUMP_PING_PACKET_NO_SIGNATURE* PingPacket;
 	int PtrParse;
 	unsigned int PayloadSize;
-	int PeerEndpointNamePtr;
+	int PeerEndpointNamePtr=0;
 	unsigned int PeerEndpointNameSize;
 
 	// Do not process if communication layers are not ready
@@ -333,6 +333,8 @@ void CNetUMPHandler::RunSession (void)
 							BYEReceived = true;
 							break;
 						case INVITATION_ACCEPTED_COMMAND :
+							PeerEndpointNameSize = ReceptionBuffer[PtrParse + 2] * 4;
+							PeerEndpointNamePtr = PtrParse + 4;
 							InvitationAccepted = true;
 							break;
 						case PING_COMMAND :
